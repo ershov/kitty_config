@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
+# License: GPLv3 Copyright: 2023, Yury Ershov <yuriy.ershov at gmail.com>
 
 import os
 import re
