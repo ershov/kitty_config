@@ -58,6 +58,34 @@ def dim(x: str) -> str:
 def nofmt(x: str) -> str:
     return x
 
+link_id = 1
+def link(url: str, txt: str) -> str:
+    global cmdArgs, link_id
+    link_id += 1
+    return f'\x1b]8;id={link_id};{url}\x1b\\{txt}\x1b]8;;\x1b\\' if cmdArgs.links else txt
+
+def nolink() -> str:
+    global cmdArgs
+    return '\x1b]8;;\x1b\\' if cmdArgs.links else ''
+
+def eolnl() -> str:
+    global cmdArgs
+    return '\n\x1b]8;;\x1b\\' if cmdArgs.links else '\n'
+
+
+def linkAction(txt: str) -> str:
+    import kitty.utils
+    # BUG: Macos cuts out #fragment for file URLs.
+    # return link(kitty.utils.docs_url(f'actions#action-{txt}'), txt)
+    return link(f'https://sw.kovidgoyal.net/kitty/actions/#action-{txt}', txt)
+
+
+def linkConfig(txt: str) -> str:
+    import kitty.utils
+    # BUG: Macos cuts out #fragment for file URLs.
+    # return link(kitty.utils.docs_url(f'conf#opt-kitty.{txt}'), txt)
+    return link(f'https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.{txt}', txt)
+
 
 class CmdArgs:
     def __init__(self) -> None:
@@ -67,6 +95,7 @@ class CmdArgs:
         self.diff = False
         self.sort = ''
         self.plain = False
+        self.links = True
         self.deleted = True
         self.empty = True
         self.parts = ['info', 'config', 'mouse', 'keys', 'colors', 'env', 'actions']
@@ -114,6 +143,7 @@ class CmdArgs:
             # All NONEs: set all to TRUE
             for attr in self.parts: setattr(self, attr, True)
         if self.diff: self.empty = False
+        if self.plain: self.links = False
         self.what = 'DIFF of' if self.diff else 'ALL'
 
 cmdArgs = CmdArgs()
@@ -124,38 +154,42 @@ def nojust(_: int, s: str): return s
 def ljust(n: int, s: str): return s.ljust(n)
 def rjust(n: int, s: str): return s.rjust(n)
 def center(n: int, s: str): return s.center(n)
+def formatConf(n: int, s: str): return linkConfig(s) + (' '*(n-len(s)))
+def formatAction(n: int, s: str):
+    action, args = actionSplit(s)
+    return linkAction(action) + args + (' '*(n-len(s)))
+
 class TabFmt(NamedTuple):
     indent: int = 0
     justFn: JustFn = nojust
     fmtFn: Callable[[str], str] = nofmt
-
 
 def shortcutSplit(txt: str) -> tuple[str, str]:
     global shortcutRe
     m = re.fullmatch(shortcutRe, txt)
     return (m.group(1), m.group(4)) if m else ('', txt)
 
+def actionSplit(txt: str) -> tuple[str, str]:
+    global shortcutRe
+    m = re.fullmatch(r'([^ ]+)( .*)', txt)
+    return (m.group(1), m.group(2)) if m else (txt, '')
 
 def shortcutFormat(mod: str, key: str) -> str:
     return yellow(mod) + green(key)
-
 
 def shortcutSortKey(txt: str) -> str:
     mod, key = shortcutSplit(txt)
     return f'{key} zzz {mod}'
 
-
 def star(f):
     """Parameter unpacking for lambda: https://stackoverflow.com/a/75268296/3191958"""
     return lambda args: f(*args)
-
 
 def formatTable(a: list[tuple[str]], fmt: list[TabFmt]) -> list[tuple[list[tuple[str]], str]]:
     if len(a) == 0: return []
     field_lens = [max(map(len, aa)) for aa in zip(*a)]
     return [(row, ''.join(list(map(star(lambda val, fmt1, width: (' '*fmt1.indent) + fmt1.fmtFn(fmt1.justFn(width, val))),
                                    zip(row, fmt, field_lens))))) for row in a]
-
 
 def printTable(a: list[list[str]], fmt: list[TabFmt], print: Print, rowFmtFn = lambda row, txt: txt) -> str:
     for row, txt in formatTable(a, fmt):
@@ -174,9 +208,9 @@ def print_mapping_changes(what, defns: Dict[str, str], idefns: Dict[str, str], a
         isadded = k in added
         flags = '  A  ' if isadded else '  C  ' if ischanged else '  -  ' if isremoved else '     '  # →
         if cmdArgs.diff and (not isadded and not ischanged and not isremoved): continue
-        v = defns[k] if not isremoved else '     '
-        orig = f'  \t({idefns[k]})' if ischanged or isremoved else ''
-        if not isremoved: action2key.setdefault(re.sub(r' .*$', r'', v), []).append((k, v))
+        v = formatAction(0, defns[k]) if not isremoved else '     '
+        orig = f'  \t({formatAction(0, defns[k])})' if ischanged or isremoved else ''
+        if not isremoved: action2key.setdefault(re.sub(r' .*$', r'', defns[k]), []).append((k, defns[k]))
         if isremoved and not cmdArgs.deleted: continue
         table.append((*shortcutSplit(k), flags, v, orig))
 
@@ -212,7 +246,7 @@ def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
 def compare_opts(opts: KittyOpts, print: Print) -> None:
     global cmdArgs
     printConfig = print if cmdArgs.config else lambda *args, **kwargs: None
-    printConfig(f'{cmdArgs.what} config options:')
+    printConfig(link('https://sw.kovidgoyal.net/kitty/conf/', f'{cmdArgs.what} config options:'))
     default_opts = load_config()
     ignored = ('keymap', 'sequence_map', 'mousemap', 'map', 'mouse_map')
     changed_opts = [
@@ -228,7 +262,7 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
         flags = red('  C  ' if ischanged else '     ')
         val = getattr(opts, f)
         if isinstance(val, dict):
-            printConfig(flags, title(f'{f}:'), end=' ')
+            printConfig(flags, title(f'{linkConfig(f)}:'), end=' ')
             if f == 'symbol_map':
                 printConfig()
                 for k in sorted(val):
@@ -245,9 +279,9 @@ def compare_opts(opts: KittyOpts, print: Print) -> None:
                 colors.append(flags + ' ' + yellow(fmt.format(f)) + ' ' + color_as_sharp(val) + ' ' + styled('  ', bg=val))
             else:
                 if f == 'kitty_mod':
-                    printConfig(flags, yellow(fmt.format(f)), '+'.join(mod_to_names(getattr(opts, f))), end='')
+                    printConfig(flags, yellow(formatConf(field_len, f)), '+'.join(mod_to_names(getattr(opts, f))), end='')
                 else:
-                    printConfig(flags, yellow(fmt.format(f)), str(getattr(opts, f)), end='')
+                    printConfig(flags, yellow(formatConf(field_len, f)), str(getattr(opts, f)), end='')
                 printConfig(dim(f'  \t({str(getattr(defaults, f))})') if ischanged else '')
 
     compare_maps('mouse', opts.mousemap, opts.kitty_mod, default_opts.mousemap, default_opts.kitty_mod, print)
@@ -347,7 +381,7 @@ def printActions(print: Print):
     global shortcutRe, cmdArgs
     actionsTable = formatTable(getActions(), [
         TabFmt(justFn=ljust, fmtFn=blue),
-        TabFmt(justFn=ljust, indent=2),
+        TabFmt(justFn=formatAction, indent=2),
         TabFmt(fmtFn=dim, indent=3)])
     for (group, action, desc), rowTxt in actionsTable:
         if cmdArgs.empty: print(rowTxt)
@@ -368,7 +402,7 @@ def printActions(print: Print):
             printTable([(*shortcutSplit(k), v) for k, v in a2kcomposite], [
                     TabFmt(indent=10, justFn=rjust, fmtFn=yellow),
                     TabFmt(           justFn=ljust, fmtFn=green),
-                    TabFmt(indent=3),
+                    TabFmt(indent=3,  justFn=formatAction),
                 ], print=print)
 
 
@@ -376,7 +410,7 @@ def debug_config(opts: KittyOpts) -> str:
     global cmdArgs
     from io import StringIO
     out = StringIO()
-    p = partial(print, file=out)
+    p = partial(print, file=out, end=eolnl())
 
     if cmdArgs.info:
         p(version(add_rev=True))
@@ -431,7 +465,7 @@ def debug_config(opts: KittyOpts) -> str:
         p()
 
     if cmdArgs.actions:
-        p(green(f'{cmdArgs.what} available actions:'))
+        p(green(link('https://sw.kovidgoyal.net/kitty/actions/', f'{cmdArgs.what} available actions:')))
         printActions(p)
 
     return out.getvalue() if not cmdArgs.plain else re.sub(r'\x1b[^m]*m', '', out.getvalue())
@@ -466,6 +500,7 @@ def parseArgs(args):
     parser.add_argument('--empty', '--unassigned', action=argparse.BooleanOptionalAction, help='Print unassigned actions')
     # parser.add_argument('-s', '--sort',    action='store', nargs=1, choices=['key', 'val', ''], help='Sort by key or action')
     parser.add_argument('--debug_config', '--debug', action=argparse.BooleanOptionalAction, help='Make output closest to "debug_config"')
+    parser.add_argument(        '--links', action=argparse.BooleanOptionalAction, help='Use terminal codes for hyperlinks')
     parser.add_argument('--plain', '--plaintext', action=argparse.BooleanOptionalAction, help='Disable ansi colors')
     parser.parse_args(args[1:], cmdArgs)
     cmdArgs.resolveParts()
