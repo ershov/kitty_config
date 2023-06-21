@@ -231,7 +231,8 @@ def compare_maps(what, final: Dict[AnyEvent, str], final_kitty_mod: int, initial
     added = set(ef) - set(ei)
     removed = set(ei) - set(ef)
     changed = {k for k in set(ef) & set(ei) if ef[k] != ei[k]}
-    which = 'keyboard shortcuts' if what == 'keys' else 'mouse actions'
+    which = link('https://sw.kovidgoyal.net/kitty/conf/#keyboard-shortcuts', 'keyboard shortcuts') if what == 'keys' else \
+            link('https://sw.kovidgoyal.net/kitty/conf/#mouse-actions', 'mouse actions')
     print_mapping_changes(what, dict(list(ei.items()) + list(ef.items())), ei, added, removed, changed, f'{cmdArgs.what} {which}:', print)
 
 
