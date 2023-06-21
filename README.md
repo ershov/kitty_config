@@ -42,7 +42,9 @@ A set of options like `--no-colors --no-deleted --no-empty` or
 `--mouse --keys --actions --no-deleted --no-empty`
 can be paticularly useful in everyday life.
 
-A `--debug` option sets a set of flags so that it can effectively replace `debug_config` output.
+I myself ended up with just `--no-colors`.
+
+The `--debug` option sets a combination of flags so that the output is the closest to `debug_config`.
 
 ## Command line flags:
 
@@ -52,23 +54,24 @@ usage: kitty +kitten config.py [options]
 Print kitty config.
 
 optional arguments:
-  -h, --help                   show this help message and exit
-  -d, --diff, --no-diff        Print only the diff vs defaults
-  -a, --all, --no-all          Print all parts (default behavior)
-  -i, --info, --no-info        Print common info section
-  -c, --config, --no-config    Print regular config options section
-  -m, --mouse, --no-mouse      Print mouse bindings section
-  -k, --keys, --no-keys        Print keyboard shortcuts section
-  -l, --colors, --no-colors    Print colors section
-  -e, --env, --no-env          Print environment variables section
-  -t, --actions, --no-actions  Print actions section
-  --deleted, --no-deleted      Print deleted keys
+  -h, --help                    show this help message and exit
+  -d, --diff, --no-diff         Print only the diff vs defaults
+  -a, --all, --no-all           Print all parts (default behavior)
+  -i, --info, --no-info         Print common info section
+  -c, --config, --no-config     Print regular config options section
+  -m, --mouse, --no-mouse       Print mouse bindings section
+  -k, --keys, --no-keys         Print keyboard shortcuts section
+  -l, --colors, --no-colors     Print colors section
+  -e, --env, --no-env           Print environment variables section
+  -t, --actions, --no-actions   Print actions section
+  --deleted, --no-deleted       Print deleted keys
   --empty, --no-empty, --unassigned, --no-unassigned
-                               Print unassigned actions
+                                Print unassigned actions
   --debug_config, --no-debug_config, --debug, --no-debug
-                               Make output closest to "debug_config"
+                                Make output closest to "debug_config"
+  --links, --no-links           Use terminal codes for hyperlinks
   --plain, --no-plain, --plaintext, --no-plaintext
-                               Disable ansi colors
+                                Disable ansi colors
 
 Notes:
  * Using only --{ARG}'s will include only those parts.
