@@ -400,10 +400,10 @@ def printActions(print: Print):
                     i += 1
                     print('   ', shortcutFormat(*shortcutSplit(k)), end='')
                 print()
-            printTable([(*shortcutSplit(k), v) for k, v in a2kcomposite], [
+            printTable([(*shortcutSplit(k), formatAction(0, v)) for k, v in a2kcomposite], [
                     TabFmt(indent=10, justFn=rjust, fmtFn=yellow),
                     TabFmt(           justFn=ljust, fmtFn=green),
-                    TabFmt(indent=3,  justFn=formatAction),
+                    TabFmt(indent=3),
                 ], print=print)
 
 
